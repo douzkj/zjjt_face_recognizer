@@ -24,6 +24,10 @@ class FaceIdentityRecord(Base):
     face_img_path = Column(String(512))
     show_status = Column(Integer)
     face_identy_time = Column(DateTime)
+    # 默认0未处理，1:处理中，2增强成功，3增强失败
+    enhance_status = Column(Integer)
+    enhance_img_path = Column(String(512))
+    enhance_remark = Column(Text)
 
 class FaceVisitorTaskAggData(Base):
     __tablename__ = 'face_identity_task_agg_data'

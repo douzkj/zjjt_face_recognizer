@@ -66,6 +66,11 @@ class CapedImgUtil:
         person_img_name = self.build_visitor_img_name_with_ts(usr_id, vis_time)
         return f"{person_dir}/{person_img_name}"
 
+    def build_visitor_img_enhance_save_path(self, user_id, vis_time):
+        person_dir = self.build_visitor_img_dir(user_id)
+        person_path_name = self.build_visitor_img_enhance_path_name(user_id, vis_time)
+        return f"{person_dir}/{person_path_name}"
+
     def build_visitor_img_save_path_no_ts(self, usr_id):
         person_id = f"visitor_{usr_id}"
         person_dir = os.path.join(base_visitor_face_dir, person_id)
@@ -82,6 +87,12 @@ class CapedImgUtil:
         vis_time_str = vis_time.strftime("%Y%m%d%H%M%S")
         person_img = f"{person_id}_{vis_time_str}.jpg"
         return person_img
+
+    def build_visitor_img_enhance_path_name(self, user_id, vis_time):
+        person_id = f"visitor_{user_id}"
+        vis_time_str = vis_time.strftime("%Y%m%d%H%M%S")
+        vis_path = f"{person_id}_{vis_time_str}_enhance"
+        return vis_path
 
     def trans_img_base64_to_img(self, face_img):
         img_bytes = base64.b64decode(face_img)

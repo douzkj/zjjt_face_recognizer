@@ -13,6 +13,7 @@ from dao.base_dao import TaskDAO, DB_URL, FaceIdentityTask, RecordDAO, VisitorIm
 from dao.face_db_enty import FaceIdentityRecord, FaceVisitorBaseInfo, FaceVisitorTaskAggData
 from face_ai_api.face_recognition_service import SEARCH_GROUP_STAFF, SEARCH_GROUP_VISITOR
 from util.img_util import CapedImgUtil
+from util.codeformer_enhancer import enhance
 
 test_rtsp_url="rtsp://rtspstream:WpPKtiupaLFDguY4KUlEe@zephyr.rtsp.stream/movie"
 
@@ -229,6 +230,7 @@ class RTSPStreamCapActionTmplate:
         # print(f"handle_identy_res 更新访客：{user_id}，次数：{face_recg_cnt_cur_task}")
         last_time=datetime.now()
         usr_img_path = capedImgUtil.build_visitor_img_save_path_with_ts(user_id, last_time)
+        enhance_usr_img_path = capedImgUtil.build_visitor_img_enhance_save_path(user_id, last_time)
         # new_face_visitor_task_agg_data = FaceVisitorTaskAggData(
         #     id = task_user_agg_data.id,
         #     task_id=self.task_id,
@@ -243,12 +245,26 @@ class RTSPStreamCapActionTmplate:
             group_id=SEARCH_GROUP_VISITOR,
             face_img_path=self.remove_leading_dot(usr_img_path),
             show_status=0,
-            face_identy_time=last_time
+            face_identy_time=last_time,
+            enhance_status=0,
+            enhance_img_path=enhance_usr_img_path
         )
         record_dao.save(new_visit_record)
 
         img = capedImgUtil.trans_img_base64_to_img(frame)
-        capedImgUtil.save_image_to_path(img, user_id , last_time)
+        img_path = capedImgUtil.save_image_to_path(img, user_id, last_time)
+        enhance_usr_img_path = capedImgUtil.build_visitor_img_enhance_save_path(user_id, last_time)
+        try:
+            # 进行人脸增强
+            ret, std = enhance(input_path=img_path, output_path=enhance_usr_img_path)
+            if ret is True:
+                record_dao.enhance_success(user_id, last_time, std)
+            else:
+                record_dao.enhance_error(user_id, last_time, std)
+        except Exception as e:
+            print(f"人脸增强异常. img={img_path}, enhance_usr_img_path={enhance_usr_img_path}, e={e}")
+            record_dao.enhance_error(user_id, last_time, f"{e}")
+
 
     def save_new_person_image_and_operate_db(self, face_img):
         usr_id = self.generate_random_string(VISITOR_PREFIX)
@@ -293,7 +309,8 @@ class RTSPStreamCapActionTmplate:
             group_id=SEARCH_GROUP_VISITOR,
             face_img_path=self.remove_leading_dot(person_dir),
             show_status=0,
-            face_identy_time=datetime.now()
+            face_identy_time=datetime.now(),
+            enhance_status=0
         )
         new_visit_base_info = FaceVisitorBaseInfo(
             user_id=usr_id,
