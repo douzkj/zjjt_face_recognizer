@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime, timedelta
 
 from sqlalchemy import create_engine, text
@@ -7,11 +8,11 @@ from sqlalchemy.orm import sessionmaker
 from dao.face_db_enty import FaceIdentityTask, FaceIdentityRecord, FaceVisitorBaseInfo, FaceUserGroup, \
     FaceVisitorTaskAggData
 
-# DB_IP = os.getenv('MYSQL_IP', '127.0.0.1')
-# DB_PORT = os.getenv('MYSQL_PORT', '3306')
-# DB_USER = os.getenv('MYSQL_USER', 'root')
-# DB_PWD = os.getenv('MYSQL_PWD', '<PASSWORD>')
-# DB_NAME = os.getenv('MYSQL_DB_NAME', 'db_face_recong_app')
+DB_IP = os.getenv('MYSQL_IP', '127.0.0.1')
+DB_PORT = os.getenv('MYSQL_PORT', '3306')
+DB_USER = os.getenv('MYSQL_USER', 'root')
+DB_PWD = os.getenv('MYSQL_PWD', '<PASSWORD>')
+DB_NAME = os.getenv('MYSQL_DB_NAME', 'db_face_recong_app')
 # DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_IP}/{DB_NAME}"
 # DB_URL = "mysql+pymysql://root:123456@localhost/db_face_recong_app"
 DB_URL = "mysql+pymysql://db_face_recong_app:6eTZXJdPCTy3w7kj@localhost:3306/db_face_recong_app"
@@ -167,6 +168,24 @@ class VisitorTaskAggDataDAO(BaseDAO):
                 .filter(FaceVisitorTaskAggData.user_id == user_id) \
                 .filter(FaceVisitorTaskAggData.task_id == task_id) \
                 .first()
+
+    def qry_visitor_enhance_images(self):
+        with self.Session() as session:
+            sql = text("""
+                            SELECT 
+                            user_id, 
+                            task_id,
+                            face_img_path as original_face_image,
+                            enhance_status,
+                            enhance_img_path as enhance_face_image,
+                            enhance_remark,
+                            face_identy_time as face_time
+                            from face_identity_record
+                            where enhance_status = 2
+                            order by face_identy_time desc
+                        """)
+            result = session.execute(sql)
+            return self.parse_sql_res_2_json(result)
 
     def qry_visitor_records_list(self):
         with self.Session() as session:

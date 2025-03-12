@@ -42,6 +42,13 @@ def qry_visitor_list():
     print(f"---------------{result}")
     return {'data': result}, 200
 
+@face_recon_man_bp.route('/api/face-recong-man/enhance-images', methods=['GET'])
+def qry_enhance_images():
+    result = face_recon_man_service.qry_recong_enhance_images()
+    print(f"---------------{result}")
+    return {'data': result}, 200
+
+
 @face_recon_man_bp.route('/api/face-recong-man/task-detail-list', methods=['GET'])
 def qry_task_detail_list():
     result = face_recon_man_service.qry_task_detail_list()

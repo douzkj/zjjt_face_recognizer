@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+from pathlib import Path
 
 import aio_pika
 
@@ -28,6 +29,9 @@ def do_codeformer_enhance(user_id, task_id, user_image):
     user_full_image = os.path.abspath(user_image)
     enhance_out_img_path = get_face_enhance_path(user_full_image)
     enhance_usr_img_path = remove_leading_dot(get_face_enhance_path(user_image))
+    enhance_usr_img_path = os.path.join(enhance_usr_img_path, "final_results", os.path.basename(user_image))
+    # 由于codeformer默认后缀为png 修改为png
+    Path(enhance_usr_img_path).with_suffix(".png")
     try:
         # 进行人脸增强
         ret, std = enhance(input_path=user_full_image, output_path=enhance_out_img_path)

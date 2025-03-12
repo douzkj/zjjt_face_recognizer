@@ -29,6 +29,10 @@ class FaceRecongResultService:
     def qry_recong_visitor_list(self):
         return visitor_task_agg_dao.qry_visitor_records_list();
 
+    def qry_recong_enhance_images(self):
+        return visitor_task_agg_dao.qry_visitor_enhance_images()
+
+
     def qry_task_detail_list(self):
         return visitor_task_agg_dao.qry_task_detail_list();
 
