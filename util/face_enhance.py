@@ -26,8 +26,15 @@ def send_enhance_task(user_id, task_id, user_image_relative_path):
         }
         message = json.dumps(task_obj)
         channel = connection.channel()
-        channel.queue_declare(ENHANCE_TOPIC, durable=True)
-        channel.basic_publish(body=message, exchange='', routing_key='zjjt.face_enhance')
+        channel.confirm_delivery()
+        channel.queue_declare(queue=ENHANCE_TOPIC, durable=True)
+        channel.basic_publish(body=message, exchange='', routing_key=ENHANCE_TOPIC,
+                              properties=pika.BasicProperties(delivery_mode=2))
         print(f'发送成功. message={message}')
     finally:
         connection.close()
+
+
+if __name__ == '__main__':
+    send_enhance_task("visitor_1741688935522", "ecf9ef2f-0201-4104-8a76-b8210b8e76ea",
+                      "./visitor_face/visitor_visitor_1741688935522/visitor_visitor_1741688935522.jpg")
