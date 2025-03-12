@@ -6,12 +6,15 @@ from pathlib import Path
 
 import aio_pika
 
-RABBITMQ_HOST = '127.0.0.1'
-RABBITMQ_PORT = 5672
-RABBITMQ_USERNAME = "admin"
-RABBITMQ_PASSWORD = "acd1be2a"
-RABBITMQ_VHOST = "/"
-ENHANCE_TOPIC = "zjjt_face_enhance"
+from dotenv import load_dotenv
+load_dotenv()  # 加载环境变量
+
+RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
+RABBITMQ_PORT = os.getenv('RABBITMQ_PORT', 5672)
+RABBITMQ_USERNAME = os.getenv('RABBITMQ_USERNAME', "admin")
+RABBITMQ_PASSWORD = os.getenv('RABBITMQ_PASSWORD', "acd1be2a")
+RABBITMQ_VHOST = os.getenv('RABBITMQ_VHOST', "/")
+ENHANCE_TOPIC = os.getenv('ENHANCE_TOPIC', "zjjt_face_enhance")
 
 def get_face_enhance_path(face_image_path):
     return os.path.splitext(face_image_path)[0]
@@ -58,7 +61,7 @@ async def process_enhance_task(channel, message):
 
 async def get_connection():
     connection = await aio_pika.connect_robust(host=RABBITMQ_HOST,
-                                               port=RABBITMQ_PORT,
+                                               port=int(RABBITMQ_PORT),
                                                login=RABBITMQ_USERNAME,
                                                password=RABBITMQ_PASSWORD,
                                                virtualhost=RABBITMQ_VHOST

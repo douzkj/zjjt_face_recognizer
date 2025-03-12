@@ -1,4 +1,6 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()  # 加载环境变量
 
 from face_recon_man.controller.face_recong_result_controller import face_recon_man_bp
 from server.common.across_allow_filter import app
@@ -23,13 +25,13 @@ from webrtc.webrtc_gateway import webrtc_gateway_bp
 #     }
 # )
 
-UI_PROXY_PORT = 28001
+UI_PROXY_PORT = int(os.getenv('SERVER_PORT_UI', 28001))
 
 if __name__ == '__main__':
     app.register_blueprint(stream_cap_man_bp)
     app.register_blueprint(webrtc_gateway_bp)
     app.register_blueprint(img_proxy_bp)
     app.register_blueprint(face_recon_man_bp)
-    PUB_PORT = os.getenv('PUB_PORT', 19090)
+    PUB_PORT = os.getenv('SERVER_PORT_FLASK', 19090)
 
     app.run(host='0.0.0.0', port=PUB_PORT)

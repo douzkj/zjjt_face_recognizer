@@ -13,9 +13,9 @@ DB_PORT = os.getenv('MYSQL_PORT', '3306')
 DB_USER = os.getenv('MYSQL_USER', 'root')
 DB_PWD = os.getenv('MYSQL_PWD', '<PASSWORD>')
 DB_NAME = os.getenv('MYSQL_DB_NAME', 'db_face_recong_app')
-# DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_IP}/{DB_NAME}"
+DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_IP}/{DB_NAME}"
 # DB_URL = "mysql+pymysql://root:123456@localhost/db_face_recong_app"
-DB_URL = "mysql+pymysql://db_face_recong_app:6eTZXJdPCTy3w7kj@localhost:3306/db_face_recong_app"
+# DB_URL = "mysql+pymysql://db_face_recong_app:6eTZXJdPCTy3w7kj@localhost:3306/db_face_recong_app"
 
 # 基础数据库操作类
 class BaseDAO:

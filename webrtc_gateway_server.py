@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 import time
 import cv2
@@ -396,4 +397,4 @@ def create_app():
 # ====================== 主程序 ======================
 if __name__ == "__main__":
     app = create_app()
-    web.run_app(app, port=19091)
+    web.run_app(app, port=int(os.getenv('SERVER_PORT_WEBRTC'), 19091))

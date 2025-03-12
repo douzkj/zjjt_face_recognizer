@@ -1,8 +1,5 @@
-
+import os
 import subprocess
-CODEFORMER_PATH="/data/CodeFormer"
-CODEFORMER_INFERENCE_SCRIPT = "/data/CodeFormer/inference_codeformer.py"
-VENV_PATH="/data/douzkj/face_recognizer/server/venv"
 
 # 使用subprogress执行导出命令
 def enhance(input_path,
@@ -18,6 +15,11 @@ def enhance(input_path,
             bg_tile=400,
             suffix=None,
             save_video_fps=None):
+    import setup
+    CODEFORMER_PATH = os.getenv('CODEFORMER_PATH')
+    CODEFORMER_INFERENCE_SCRIPT = os.getenv('CODEFORMER_INFERENCE_SCRIPT')
+    VENV_PATH = os.getenv('CODEFORMER_VENV_PATH')
+
     command_str = f"""
     source {VENV_PATH}/bin/activate && 
     cd {CODEFORMER_PATH} && 

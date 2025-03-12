@@ -1,2 +1,3 @@
 .venv
 visitor_face/**
+.env
