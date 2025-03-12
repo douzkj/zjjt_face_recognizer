@@ -14,6 +14,7 @@ from dao.face_db_enty import FaceIdentityRecord, FaceVisitorBaseInfo, FaceVisito
 from face_ai_api.face_recognition_service import SEARCH_GROUP_STAFF, SEARCH_GROUP_VISITOR
 from util.img_util import CapedImgUtil
 from util.codeformer_enhancer import enhance
+from util.face_enhance import send_enhance_task
 
 test_rtsp_url="rtsp://rtspstream:WpPKtiupaLFDguY4KUlEe@zephyr.rtsp.stream/movie"
 
@@ -230,7 +231,6 @@ class RTSPStreamCapActionTmplate:
         # print(f"handle_identy_res 更新访客：{user_id}，次数：{face_recg_cnt_cur_task}")
         last_time=datetime.now()
         usr_img_path = capedImgUtil.build_visitor_img_save_path_with_ts(user_id, last_time)
-        enhance_usr_img_path = capedImgUtil.build_visitor_img_enhance_save_path(user_id, last_time)
         # new_face_visitor_task_agg_data = FaceVisitorTaskAggData(
         #     id = task_user_agg_data.id,
         #     task_id=self.task_id,
@@ -247,23 +247,17 @@ class RTSPStreamCapActionTmplate:
             show_status=0,
             face_identy_time=last_time,
             enhance_status=0,
-            enhance_img_path=enhance_usr_img_path
         )
         record_dao.save(new_visit_record)
 
         img = capedImgUtil.trans_img_base64_to_img(frame)
-        img_path = capedImgUtil.save_image_to_path(img, user_id, last_time)
-        enhance_usr_img_path = capedImgUtil.build_visitor_img_enhance_save_path(user_id, last_time)
+        capedImgUtil.save_image_to_path(img, user_id, last_time)
         try:
-            # 进行人脸增强
-            ret, std = enhance(input_path=img_path, output_path=enhance_usr_img_path)
-            if ret is True:
-                record_dao.enhance_success(user_id, last_time, std)
-            else:
-                record_dao.enhance_error(user_id, last_time, std)
+            # send enhance task
+            send_enhance_task(user_id, self.task_id, usr_img_path)
         except Exception as e:
-            print(f"人脸增强异常. img={img_path}, enhance_usr_img_path={enhance_usr_img_path}, e={e}")
-            record_dao.enhance_error(user_id, last_time, f"{e}")
+            print(f"发送队列失败. user_id={user_id},task_id={task_id}, user_image={usr_img_path}, e={e}")
+            record_dao.enhance_error(user_id, last_time, f"发送识别队列失败. {e}")
 
 
     def save_new_person_image_and_operate_db(self, face_img):

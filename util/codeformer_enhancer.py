@@ -24,6 +24,8 @@ def enhance(input_path,
     python3 {CODEFORMER_INFERENCE_SCRIPT}  --input_path {input_path} --output_path {output_path} -w {fidelity_weight} --upscale {upscale} --bg_upsampler {bg_upsampler}
     """
 
+    print(f"enhance command: {command_str}")
+
     # 在 subprocess 中执行激活虚拟环境和 CodeFormer 命令
     try:
         # 激活虚拟环境

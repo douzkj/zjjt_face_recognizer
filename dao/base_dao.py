@@ -113,21 +113,24 @@ class RecordDAO(BaseDAO):
                 .order_by(FaceIdentityRecord.face_last_identy_time.desc()) \
                 .all()
 
-    def enhance_success(self, user_id, task_id, remark=None):
+    def enhance_success(self, user_id, task_id, enhance_img_path, remark=None):
         with self.Session() as session:
             sql = text("""
                 update face_identity_record
-                set enhance_status = :status , remark = :remark
+                set enhance_status = :status , enhance_remark = :remark, enhance_img_path = :enhance_img_path
                 where user_id = :user_id and task_id = :task_id
              """)
-            session.execute(sql, {'status': 2, 'remark': "success" if remark is None else remark, "user_id": user_id, "task_id": task_id})
+            session.execute(sql, {'status': 2, 'remark': "success" if remark is None else remark,
+                                  "user_id": user_id, "task_id": task_id,
+                                  "enhance_img_path": enhance_img_path
+                                  })
             session.commit()
 
     def enhance_error(self, user_id, task_id, remark):
         with self.Session() as session:
             sql = text("""
                        update face_identity_record
-                       set enhance_status = :status , remark = :remark
+                       set enhance_status = :status , enhance_remark = :remark
                        where user_id = :user_id and task_id = :task_id
                     """)
             session.execute(sql, {'status': 3, 'remark': "error" if remark is None else remark,
