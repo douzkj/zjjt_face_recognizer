@@ -11,11 +11,12 @@ from dao.face_db_enty import FaceIdentityTask, FaceIdentityRecord, FaceVisitorBa
 DB_IP = os.getenv('MYSQL_IP', '127.0.0.1')
 DB_PORT = os.getenv('MYSQL_PORT', '3306')
 DB_USER = os.getenv('MYSQL_USER', 'root')
-DB_PWD = os.getenv('MYSQL_PWD', '<PASSWORD>')
+DB_PWD = os.getenv('MYSQL_PWD', '123456')
 DB_NAME = os.getenv('MYSQL_DB_NAME', 'db_face_recong_app')
-DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_IP}/{DB_NAME}"
+# DB_URL = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_IP}/{DB_NAME}"
 # DB_URL = "mysql+pymysql://root:123456@localhost/db_face_recong_app"
-# DB_URL = "mysql+pymysql://db_face_recong_app:6eTZXJdPCTy3w7kj@localhost:3306/db_face_recong_app"
+DB_URL = "mysql+pymysql://db_face_recong_app:6eTZXJdPCTy3w7kj@localhost:3306/db_face_recong_app"
+
 
 # 基础数据库操作类
 class BaseDAO:
@@ -56,7 +57,6 @@ class BaseDAO:
             return session.query(entity_class).get(entity_id)
 
 
-
 # 具体业务操作类
 class TaskDAO(BaseDAO):
     def get_tasks_by_status(self, status):
@@ -80,7 +80,7 @@ class TaskDAO(BaseDAO):
                 set status = :status , end_time = :end_time
                 where status = 1
              """)
-            session.execute(sql, {'status': status, 'end_time': end_time })
+            session.execute(sql, {'status': status, 'end_time': end_time})
             session.commit()
 
     def update_identy_task_status(self, status, end_time, task_id):
@@ -94,12 +94,12 @@ class TaskDAO(BaseDAO):
             session.commit()
 
 
-
 class RecordDAO(BaseDAO):
     def get_records_by_user(self, user_id):
         with (self.Session() as session):
             return session.query(FaceIdentityRecord) \
                 .filter(FaceIdentityRecord.user_id == user_id).first()
+
     def get_records_by_task_user(self, user_id, task_id):
         with self.Session() as session:
             return session.query(FaceIdentityRecord) \
@@ -114,32 +114,29 @@ class RecordDAO(BaseDAO):
                 .order_by(FaceIdentityRecord.face_last_identy_time.desc()) \
                 .all()
 
-    def enhance_success(self, user_id, task_id, enhance_img_path, remark=None):
+    def enhance_success(self, record_id, enhance_img_path, remark=None):
         with self.Session() as session:
             sql = text("""
                 update face_identity_record
                 set enhance_status = :status , enhance_remark = :remark, enhance_img_path = :enhance_img_path
-                where user_id = :user_id and task_id = :task_id
+                where id = :record_id
              """)
             session.execute(sql, {'status': 2, 'remark': "success" if remark is None else remark,
-                                  "user_id": user_id, "task_id": task_id,
+                                  "record_id": record_id,
                                   "enhance_img_path": enhance_img_path
                                   })
             session.commit()
 
-    def enhance_error(self, user_id, task_id, remark):
+    def enhance_error(self, record_id, remark):
         with self.Session() as session:
             sql = text("""
                        update face_identity_record
                        set enhance_status = :status , enhance_remark = :remark
-                       where user_id = :user_id and task_id = :task_id
+                       where id = :record_id
                     """)
             session.execute(sql, {'status': 3, 'remark': "error" if remark is None else remark,
-                                  "user_id": user_id,
-                                  "task_id": task_id})
+                                  "record_id": record_id})
             session.commit()
-
-
 
 
 class VisitorBaseInfoDAO(BaseDAO):
@@ -154,6 +151,7 @@ class VisitorBaseInfoDAO(BaseDAO):
             return session.query(FaceVisitorBaseInfo) \
                 .filter(FaceVisitorBaseInfo.group_id == group_id) \
                 .all()
+
 
 class VisitorTaskAggDataDAO(BaseDAO):
     def get_recong_usr_cnt_by_task_id(self, task_id):
@@ -210,7 +208,7 @@ class VisitorTaskAggDataDAO(BaseDAO):
                 FROM (
                     SELECT *
                     FROM face_identity_task
-                    
+
                 ) t1
                    left JOIN (
                         SELECT task_id, COUNT(DISTINCT user_id) AS idt_cnt
@@ -238,7 +236,6 @@ class VisitorTaskAggDataDAO(BaseDAO):
                                 WHERE task_id = :task_id
                                 group by user_id) t2 on t1.user_id=t2.user_id
             """)
-            print(f"---------------{sql}")
             result = session.execute(sql, {'task_id': task_id})
             return self.parse_sql_res_2_json(result)
 
@@ -272,8 +269,6 @@ class VisitorTaskAggDataDAO(BaseDAO):
                 })
             session.commit()
 
-
-
     def get_cur_collect_task_id(self):
         with self.Session() as session:
             sql = text("""
@@ -284,7 +279,6 @@ class VisitorTaskAggDataDAO(BaseDAO):
              """)
             result = session.execute(sql)
             return self.parse_sql_res_2_json_with_check_array_len(result, True)
-
 
     def qry_visitor_wall_screen(self):
         with self.Session() as session:
@@ -302,8 +296,6 @@ class VisitorTaskAggDataDAO(BaseDAO):
              """)
             result = session.execute(sql)
             return self.parse_sql_res_2_json_with_check_array_len(result, False)
-
-
 
     def parse_sql_res_2_json(self, result):
         return self.parse_sql_res_2_json_with_check_array_len(result, False)
@@ -347,6 +339,7 @@ class VisitorTaskAggDataDAO(BaseDAO):
         except Exception as e:
             # 捕获异常并返回错误信息
             return json.dumps({"error": str(e)}, ensure_ascii=False, indent=4)
+
 
 class VisitorImgDetailDAO(BaseDAO):
     def get_user_by_id(self, user_id):

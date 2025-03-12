@@ -1,15 +1,20 @@
 # face_recognition_service.py
 import base64
 import logging
+import os
 import time
 
 import cv2
 import requests
 
+from util.img_util import CapedImgUtil
+
 API_KEYS = {
     "TOKEN_URL": "https://aip.baidubce.com/oauth/2.0/token",
-    "API_KEY": "RRC12UOewloTFkc5hocU7Dr4",
-    "SECRET_KEY":  "S8V8aGoJlM9mhlF7qT7GQ12mw9rsSwTR",
+    # "API_KEY": "RRC12UOewloTFkc5hocU7Dr4",
+    "API_KEY": "TDHheOu5ZzG9HLUiYNztu5ir",
+    # "SECRET_KEY":  "S8V8aGoJlM9mhlF7qT7GQ12mw9rsSwTR",
+    "SECRET_KEY":  "FkiDsLNbPMiHfBntTJIfiFAIMTNGLoUI",
     "REQUEST_DETECT_URL": "https://aip.baidubce.com/rest/2.0/face/v3/detect",
     "REQUEST_URL": "https://aip.baidubce.com/rest/2.0/face/v3/match",
     "REQUEST_URL_SINGLE_FACE_SEARCH": "https://aip.baidubce.com/rest/2.0/face/v3/search",
@@ -26,7 +31,14 @@ RES_ERR_CODE = "error_code"
 SCORE_THRESHOLD = 80
 API_ERR_EXP_CODE = -1
 API_SUCC_CODE = 0
+API_NOT_MATCH_FACE_CODE = 222207
 
+capedImgUtil = CapedImgUtil()
+
+FACE_ANGLE_THRESHOLD_YAW = os.getenv('FACE_ANGLE_THRESHOLD_YAW', 40)
+# FACE_ANGLE_THRESHOLD_YAW = 40
+FACE_ANGLE_THRESHOLD_PITCH = os.getenv('FACE_ANGLE_THRESHOLD_PITCH', 35)
+FACE_ANGLE_THRESHOLD_ROLL = os.getenv('FACE_ANGLE_THRESHOLD_ROLL', 30)
 
 class FaceRecognitionService:
     def __init__(self):
@@ -49,7 +61,7 @@ class FaceRecognitionService:
         params = {
             "image": img_base64,
             "image_type": "BASE64",
-            "face_field": "location",
+            "face_field": "location,quality",
             "max_face_num": 10
         }
 
@@ -60,9 +72,9 @@ class FaceRecognitionService:
                 headers={'Content-Type': 'application/json'}
             )
             result = response.json()
-            # now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+            now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
             res = result.get("error_code");
-            # print(f"检测===人脸,{now_time} , AI result:{res}")
+            print(f"检测===人脸,{now_time} , AI result:{res}")
             if result.get("error_code") == 0:
                 return self.process_detection_result(frame, result)
             return frame, []
@@ -74,21 +86,61 @@ class FaceRecognitionService:
     def process_detection_result(self, frame, result):
         face_list = result.get("result", {}).get("face_list", [])
         faces = []
+        # print(f"人脸检测 res info:{face_list} 张人脸 ")
         for face in face_list:
+            print(f"人脸检测 res info:{face}   ")
             location = face.get("location", {})
             left = int(location.get("left", 0)) - 30
             top = int(location.get("top", 0)) - 30
             width = int(location.get("width", 0)) + 60
             height = int(location.get("height", 0)) + 60
 
-            faces.append((left, top, width, height))
-            cv2.rectangle(frame, (left, top), (left + width, top + height), (0, 255, 0), 2)
+            # 检测角度是否正常，阈值内的放入到人脸集合中
+            if self.check_angle_values(face):
+                faces.append((left, top, width, height))
+                cv2.rectangle(frame, (left, top), (left + width, top + height), (0, 255, 0), 2)
+            else:
+                ang_info = face.get("angle")
+                print(f"人脸检测角度不满足，angle info:{ang_info} 张人脸 ")
         # _, img_encoded = cv2.imencode('.jpg', frame)
         # img_base64 = base64.b64encode(img_encoded).decode('utf-8')
+        face_cnt = len(faces)
         now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        print(f"检测到 {len(faces)} 张人脸, {now_time}")
+        # print(f"检测到 {face_cnt} 张人脸", {now_time})
+        if face_cnt > 0:
+            print(f"共计{face_cnt} 张人脸, {now_time}"
+                  # f"， 原始frame: {capedImgUtil.frame_to_base64(frame)}"
+                  f"")
         self.frame = frame
         return frame, faces
+
+    def check_angle_values(self, json_data):
+        """
+        检查JSON数据中angle字段的三个属性的绝对值是否都小于给定的阈值。
+
+        :param json_data: 包含face信息的JSON数据（字典形式）
+        :param threshold: 阈值，用于比较angle属性的绝对值
+        :return: 如果所有angle属性的绝对值都小于阈值，返回True；否则返回False
+        """
+        # 获取angle字段
+        angle = json_data.get("angle")
+        if not angle:
+            raise ValueError("JSON数据中不存在angle字段")
+
+        # 检查angle下的三个属性
+        yaw = angle.get("yaw")
+        pitch = angle.get("pitch")
+        roll = angle.get("roll")
+
+        # 检查是否存在缺失的属性
+        if yaw is None or pitch is None or roll is None:
+            raise ValueError("angle字段中缺少必要的属性")
+
+        # 检查绝对值是否都小于阈值
+        if abs(yaw) < FACE_ANGLE_THRESHOLD_YAW and abs(pitch) < FACE_ANGLE_THRESHOLD_PITCH and abs(roll) < FACE_ANGLE_THRESHOLD_ROLL:
+            return True
+        else:
+            return False
 
     # def process_extract_faces(self, faces):
     #     faces_img_base64str = []
@@ -130,9 +182,15 @@ class FaceRecognitionService:
         :param img: 图片数据
         """
         # 调用失败/返回非可识别（code！=0）均做异常图片处理，不做后续入库或计数
-        if not result or result.get("error_code") != API_SUCC_CODE:
+        if not result or (result.get("error_code") != API_SUCC_CODE and result.get("error_code") != API_NOT_MATCH_FACE_CODE ):
             print(f"-----------request baidu AI processing res err: {str(result)}")
             return {"error_code": API_ERR_EXP_CODE}
+
+        print(f"-----------request baidu AI processing res : {str(result)}")
+
+        resp_code = result.get("error_code")
+        if resp_code == API_NOT_MATCH_FACE_CODE:
+            return
 
         resultVal = result.get("result", {})
         user_list = resultVal.get("user_list", [])

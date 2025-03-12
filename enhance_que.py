@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 
 import aio_pika
-
 from dotenv import load_dotenv
+
 load_dotenv()  # 加载环境变量
 
 RABBITMQ_HOST = os.getenv('RABBITMQ_HOST', '127.0.0.1')
@@ -26,7 +26,7 @@ def remove_leading_dot(s):
     else:
         return s
 
-def do_codeformer_enhance(user_id, task_id, user_image):
+def do_codeformer_enhance(record_id, user_id, task_id, user_image):
     from util.codeformer_enhancer import enhance
     from stream_cap.rtsp_stream_cap_action_template import record_dao
     user_full_image = os.path.abspath(user_image)
@@ -34,24 +34,25 @@ def do_codeformer_enhance(user_id, task_id, user_image):
     enhance_usr_img_path = remove_leading_dot(get_face_enhance_path(user_image))
     enhance_usr_img_path = os.path.join(enhance_usr_img_path, "final_results", os.path.basename(user_image))
     # 由于codeformer默认后缀为png 修改为png
-    Path(enhance_usr_img_path).with_suffix(".png")
+    enhance_usr_img_path = Path(enhance_usr_img_path).with_suffix(".png")
     try:
         # 进行人脸增强
         ret, std = enhance(input_path=user_full_image, output_path=enhance_out_img_path)
         if ret is True:
-            record_dao.enhance_success(user_id, task_id, enhance_usr_img_path, std)
+            record_dao.enhance_success(record_id, enhance_usr_img_path, std)
         else:
-            record_dao.enhance_error(user_id, task_id, std)
+            record_dao.enhance_error(record_id, std)
     except Exception as e:
         print(f"人脸增强异常. img={user_image}, enhance_usr_img_path={enhance_usr_img_path}, e={e}")
-        record_dao.enhance_error(user_id, task_id, f"{e}")
+        record_dao.enhance_error(record_id, f"{e}")
 
 
 async def process_enhance_task(channel, message):
     try:
         print(f"Received: {message.body.decode('utf-8')}")
         task_obj = json.loads(message.body.decode('utf-8'))
-        do_codeformer_enhance(user_id=task_obj.get("user_id"),
+        do_codeformer_enhance(record_id=task_obj.get('record_id'),
+                              user_id=task_obj.get("user_id"),
                               task_id=task_obj.get("task_id"),
                               user_image=task_obj.get("user_image"))
         await message.ack()

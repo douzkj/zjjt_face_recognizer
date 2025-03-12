@@ -1,4 +1,5 @@
 import base64
+import sys
 import threading
 import time
 from datetime import datetime
@@ -30,6 +31,9 @@ VISITOR_PREFIX = "visitor_"
 RANDOM = Random(int(time.time()))
 capedImgUtil = CapedImgUtil()
 
+# f = open('log.txt', 'w')
+# sys.stdout = f
+
 # RTSP拉流处理流程框架类
 #1）拉流取图片帧，2）检测图片人脸正脸，3）从图片中抽取正脸后，入MQ
 class RTSPStreamCapActionTmplate:
@@ -55,6 +59,10 @@ class RTSPStreamCapActionTmplate:
             self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # 初始化时设置
             self.is_running = True
             self.task_id = task_id
+
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+            print("视频流帧率：", fps)
+
             threading.Thread(target=self.video_loop, daemon=True).start()
             cur_time = datetime.now()
             task_dao.update_unfin_task_status(2, cur_time)
@@ -115,9 +123,16 @@ class RTSPStreamCapActionTmplate:
                     self.cap.grab()
 
                 ret, frame = self.cap.retrieve()
-
+                # ret, frame = self.cap.read()
+                img_str = capedImgUtil.frame_to_base64(frame)
+                now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                print(f"------{now_time}, frame:  {img_str}   ")
                 if ret:
                     processed_frame, faces = self.video_processor.process_detect_frame(frame)
+
+
+                    # print(f"------{now_time}, frame:  {img_str} ")
+
                     faces_img_base64str = capedImgUtil.process_extract_faces(processed_frame, faces)
                     self.face_img_str_to_mq(faces_img_base64str)
                     last_process_time = time.time()
@@ -248,21 +263,22 @@ class RTSPStreamCapActionTmplate:
             face_identy_time=last_time,
             enhance_status=0,
         )
-        record_dao.save(new_visit_record)
+        record_id = record_dao.save(new_visit_record)
 
         img = capedImgUtil.trans_img_base64_to_img(frame)
         capedImgUtil.save_image_to_path(img, user_id, last_time)
         try:
             # send enhance task
-            send_enhance_task(user_id, self.task_id, usr_img_path)
+            send_enhance_task(record_id=record_id, user_id=user_id, task_id=self.task_id, user_image_relative_path=usr_img_path)
         except Exception as e:
-            print(f"发送队列失败. user_id={user_id},task_id={task_id}, user_image={usr_img_path}, e={e}")
-            record_dao.enhance_error(user_id, last_time, f"发送识别队列失败. {e}")
+            print(f"发送队列失败. record_id={record_id}, user_id={user_id},task_id={self.task_id}, user_image={usr_img_path}, e={e}")
+            record_dao.enhance_error(record_id, f"发送识别队列失败. {e}")
 
 
     def save_new_person_image_and_operate_db(self, face_img):
         usr_id = self.generate_random_string(VISITOR_PREFIX)
         self.save_image_and_operate_db(face_img, usr_id)
+        return usr_id
 
     def save_image_and_operate_db(self, face_img, usr_id):
         person_img_dir = self.save_image(face_img, usr_id)
