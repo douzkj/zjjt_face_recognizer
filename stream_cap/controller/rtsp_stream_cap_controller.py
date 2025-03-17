@@ -5,7 +5,8 @@ import uuid
 from flask import request, jsonify, Blueprint
 
 from face_ai_api.face_recognition_service import FaceRecognitionService
-from stream_cap.rtsp_stream_cap_action_template import RTSPStreamCapActionTmplate
+# from stream_cap.rtsp_stream_cap_action_template import RTSPStreamCapActionTmplate
+from stream_cap.rtsp_stream_cap_action_with_mp_template import RTSPStreamCapActionWithMpTemplate
 
 stream_cap_man_bp = Blueprint('stream_cap', __name__)
 
@@ -55,8 +56,9 @@ def start_capture():
     print('---------------start:' + task_id)
 
     processor = DefaultVideoProcessor()
-    stream = RTSPStreamCapActionTmplate(processor, cap_period=cap_period, rtsp_url=rtsp_url)
-    stream.start_capture(task_id)
+    # stream = RTSPStreamCapActionTmplate(processor, cap_period=cap_period, rtsp_url=rtsp_url)
+    stream = RTSPStreamCapActionWithMpTemplate(processor, rtsp_url=rtsp_url)
+    stream.start_capture(rtsp_url, task_id, cap_period)
 
     with task_lock:
         active_tasks[task_id] = stream

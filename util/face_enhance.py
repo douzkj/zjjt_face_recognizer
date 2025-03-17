@@ -31,8 +31,7 @@ def send_enhance_task(record_id, user_id, task_id, user_image_relative_path):
         channel.queue_declare(queue=ENHANCE_TOPIC, durable=True)
         channel.basic_publish(body=message, exchange='', routing_key=ENHANCE_TOPIC,
                               properties=pika.BasicProperties(delivery_mode=2))
-        print(f''
-              f'. message={message}')
+        print(f'发送成功. message={message}')
     finally:
         connection.close()
 

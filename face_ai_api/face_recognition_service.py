@@ -11,10 +11,14 @@ from util.img_util import CapedImgUtil
 
 API_KEYS = {
     "TOKEN_URL": "https://aip.baidubce.com/oauth/2.0/token",
-    # "API_KEY": "RRC12UOewloTFkc5hocU7Dr4",
-    "API_KEY": "TDHheOu5ZzG9HLUiYNztu5ir",
-    # "SECRET_KEY":  "S8V8aGoJlM9mhlF7qT7GQ12mw9rsSwTR",
-    "SECRET_KEY":  "FkiDsLNbPMiHfBntTJIfiFAIMTNGLoUI",
+    "API_KEY": os.getenv("BAIDU_API_KEY", "RRC12UOewloTFkc5hocU7Dr4"),
+    # "API_KEY": "J6PTJiBCKJ85umXfOgnw64zq",  #lhh
+    # "API_KEY": "TDHheOu5ZzG9HLUiYNztu5ir",
+    # "API_KEY": "MvGHZCETaZFfinSQ3KN2TG7h", #4
+    "SECRET_KEY":  os.getenv("BAIDU_SECRET_KEY", "S8V8aGoJlM9mhlF7qT7GQ12mw9rsSwTR"),
+    # "SECRET_KEY":  "L3xAWLl0bTyWwrecdjBlufFMQ8KSYraZ", #lh
+    # "SECRET_KEY":  "FkiDsLNbPMiHfBntTJIfiFAIMTNGLoUI",
+    # "SECRET_KEY":  "k7lYKogtkrQuQ8wHW2ipJYd4ajilczmS", #4
     "REQUEST_DETECT_URL": "https://aip.baidubce.com/rest/2.0/face/v3/detect",
     "REQUEST_URL": "https://aip.baidubce.com/rest/2.0/face/v3/match",
     "REQUEST_URL_SINGLE_FACE_SEARCH": "https://aip.baidubce.com/rest/2.0/face/v3/search",
@@ -28,17 +32,23 @@ SEARCH_GROUP_VISITOR = "face_visitor"
 IMG_TYPE_BASE64 = "BASE64"
 
 RES_ERR_CODE = "error_code"
-SCORE_THRESHOLD = 80
+SCORE_THRESHOLD = int(os.getenv('SCORE_THRESHOLD', 40))
 API_ERR_EXP_CODE = -1
 API_SUCC_CODE = 0
 API_NOT_MATCH_FACE_CODE = 222207
 
 capedImgUtil = CapedImgUtil()
 
-FACE_ANGLE_THRESHOLD_YAW = os.getenv('FACE_ANGLE_THRESHOLD_YAW', 40)
+FACE_ANGLE_THRESHOLD_YAW_POS = int(os.getenv('FACE_ANGLE_THRESHOLD_YAW_POS', 10))
+
+FACE_ANGLE_THRESHOLD_YAW_NEG = int(os.getenv('FACE_ANGLE_THRESHOLD_YAW_NEG', -40))
 # FACE_ANGLE_THRESHOLD_YAW = 40
-FACE_ANGLE_THRESHOLD_PITCH = os.getenv('FACE_ANGLE_THRESHOLD_PITCH', 35)
-FACE_ANGLE_THRESHOLD_ROLL = os.getenv('FACE_ANGLE_THRESHOLD_ROLL', 30)
+FACE_ANGLE_THRESHOLD_PITCH = int(os.getenv('FACE_ANGLE_THRESHOLD_PITCH', 35))
+FACE_ANGLE_THRESHOLD_ROLL = int(os.getenv('FACE_ANGLE_THRESHOLD_ROLL', 30))
+BLUR_THRESHOLD_PITCH = float(os.getenv('BLUR_THRESHOLD_PITCH', 0.7))
+ILLUMINATION_THRESHOLD_ROLL = int(os.getenv('ILLUMINATION_THRESHOLD_ROLL', 40))
+WIDTH_THRESHOLD_ROLL = int(os.getenv('WIDTH_THRESHOLD_ROLL', 38))
+HEIGHT_THRESHOLD_ROLL = int(os.getenv('HEIGHT_THRESHOLD_ROLL', 30))
 
 class FaceRecognitionService:
     def __init__(self):
@@ -73,8 +83,8 @@ class FaceRecognitionService:
             )
             result = response.json()
             now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            res = result.get("error_code");
-            print(f"检测===人脸,{now_time} , AI result:{res}")
+            # res = result.get("error_code");
+            print(f"检测===人脸,{now_time} , AI result:{result}")
             if result.get("error_code") == 0:
                 return self.process_detection_result(frame, result)
             return frame, []
@@ -86,9 +96,10 @@ class FaceRecognitionService:
     def process_detection_result(self, frame, result):
         face_list = result.get("result", {}).get("face_list", [])
         faces = []
+        now_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         # print(f"人脸检测 res info:{face_list} 张人脸 ")
         for face in face_list:
-            print(f"人脸检测 res info:{face}   ")
+            print(f"人脸检测 ,{now_time} ,res info:{face}   ")
             location = face.get("location", {})
             left = int(location.get("left", 0)) - 30
             top = int(location.get("top", 0)) - 30
@@ -96,12 +107,11 @@ class FaceRecognitionService:
             height = int(location.get("height", 0)) + 60
 
             # 检测角度是否正常，阈值内的放入到人脸集合中
-            if self.check_angle_values(face):
+            if self.check_angle_blur_illum_values(face):
                 faces.append((left, top, width, height))
                 cv2.rectangle(frame, (left, top), (left + width, top + height), (0, 255, 0), 2)
             else:
-                ang_info = face.get("angle")
-                print(f"人脸检测角度不满足，angle info:{ang_info} 张人脸 ")
+                print(f"人脸检测角度、光照、模糊度、不满足，face info:{face}   ")
         # _, img_encoded = cv2.imencode('.jpg', frame)
         # img_base64 = base64.b64encode(img_encoded).decode('utf-8')
         face_cnt = len(faces)
@@ -114,7 +124,7 @@ class FaceRecognitionService:
         self.frame = frame
         return frame, faces
 
-    def check_angle_values(self, json_data):
+    def check_angle_blur_illum_values(self, json_data):
         """
         检查JSON数据中angle字段的三个属性的绝对值是否都小于给定的阈值。
 
@@ -124,6 +134,8 @@ class FaceRecognitionService:
         """
         # 获取angle字段
         angle = json_data.get("angle")
+        quality = json_data.get("quality")
+        location = json_data.get("location")
         if not angle:
             raise ValueError("JSON数据中不存在angle字段")
 
@@ -136,8 +148,14 @@ class FaceRecognitionService:
         if yaw is None or pitch is None or roll is None:
             raise ValueError("angle字段中缺少必要的属性")
 
+        illumination = quality.get("illumination")
+
+        width = location.get("width")
+        height = location.get("height")
+
         # 检查绝对值是否都小于阈值
-        if abs(yaw) < FACE_ANGLE_THRESHOLD_YAW and abs(pitch) < FACE_ANGLE_THRESHOLD_PITCH and abs(roll) < FACE_ANGLE_THRESHOLD_ROLL:
+        if FACE_ANGLE_THRESHOLD_YAW_POS > yaw > FACE_ANGLE_THRESHOLD_YAW_NEG and abs(pitch) < FACE_ANGLE_THRESHOLD_PITCH and abs(roll) < FACE_ANGLE_THRESHOLD_ROLL \
+            and height>=HEIGHT_THRESHOLD_ROLL and width>=WIDTH_THRESHOLD_ROLL and illumination > ILLUMINATION_THRESHOLD_ROLL:
             return True
         else:
             return False

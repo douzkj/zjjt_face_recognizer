@@ -128,4 +128,40 @@ class CapedImgUtil:
         img = cv2.imdecode(img_np, cv2.IMREAD_COLOR)
         return img
 
+    def image_to_base64(self, image_path):
+        """
+        根据图片绝对路径读取图片并生成 Base64 编码字符串
+
+        参数:
+            image_path (str): 图片的绝对路径
+
+        返回:
+            str: Base64 编码字符串，如果读取或编码失败则返回 None
+        """
+        # 检查文件是否存在
+        if not os.path.exists(image_path):
+            print(f"错误：文件 {image_path} 不存在")
+            return None
+
+        # 检查是否是文件
+        if not os.path.isfile(image_path):
+            print(f"错误：{image_path} 不是一个有效的文件")
+            return None
+
+        try:
+            # 打开图片文件并读取二进制数据
+            with open(image_path, "rb") as image_file:
+                # 读取文件内容
+                image_data = image_file.read()
+                # 使用 base64 编码
+                base64_encoded = base64.b64encode(image_data).decode('utf-8')
+                return base64_encoded
+        except Exception as e:
+            print(f"读取或编码图片时出错: {e}")
+            return None
+
+
+
+
+
 

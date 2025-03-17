@@ -3,7 +3,6 @@ from random import Random
 
 from dao.base_dao import TaskDAO, DB_URL, RecordDAO, VisitorImgDetailDAO, VisitorBaseInfoDAO, \
     VisitorTaskAggDataDAO
-from stream_cap.rtsp_stream_cap_action_template import visitor_task_agg_dao
 from util.img_util import CapedImgUtil
 
 test_rtsp_url="rtsp://rtspstream:WpPKtiupaLFDguY4KUlEe@zephyr.rtsp.stream/movie"
